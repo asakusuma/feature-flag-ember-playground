@@ -2,7 +2,7 @@
 
 module.exports = function(environment) {
   let ENV = {
-    modulePrefix: 'lix-ember-playground',
+    modulePrefix: 'feature-flag-ember-playground',
     environment,
     rootURL: '/',
     locationType: 'auto',
