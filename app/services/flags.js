@@ -9,105 +9,69 @@ export default Service.extend({
     this.router.on('routeWillChange', ({ from, to }) => {
       this._processFlagsStuffForRouteInfos({ from, to });
     });
+    this.ROUTE_FLAGS_MAP = new Map([
+      [
+        FLAGS,
+        new Map([
+          [TOP_LEVEL_FLAGS, new Map()],
+          [INHERIT_FLAGS, new Map()],
+        ]),
+      ],
+    ]);
   },
   _processFlagsStuffForRouteInfos({ from, to }) {
+    const getFlagsFromName = (routeName) => {
+      const privateRouter = this.router._router._routerMicrolib;
+      return privateRouter.getRoute(routeName).flags;
+    };
     // application -> profile -> connections
     const toList = createList(to);
-    const privateRouter = this.router._router._routerMicrolib;
-    // init flags map for each route hierarchy
-    let ptr = ROUTE_FLAGS_MAP;
-    for (const { name, localName } of toList) {
-      if (!ptr.has(localName)) {
-        ptr.set(localName, new Map([[SPECIAL_PARENT_KEY, ptr]]));
-      }
-      ptr = ptr.get(localName);
-      const { flags } = privateRouter.getRoute(name);
-      if (!flags) continue;
-      // flags.keys: ['a', 'b']
-      if (!ptr.has(SPECIAL_FLAGS_KEY)) {
-        const parentFlagsMap = ptr
-          .get(SPECIAL_PARENT_KEY)
-          .get(SPECIAL_FLAGS_KEY);
-        const topLevelFlagsEntries = flags.keys
-          .filter(
-            (f) =>
-              !parentFlagsMap.get(TOP_LEVEL_FLAGS).has(f) &&
-              !parentFlagsMap.get(INHERIT_FLAGS).has(f)
-          )
-          .map((f) => [f, new FlagRef(f)]);
-        const inheritFlagsEntries = Array.from(
-          parentFlagsMap.get(INHERIT_FLAGS).entries()
-        ).concat(Array.from(parentFlagsMap.get(TOP_LEVEL_FLAGS).entries()));
-        const flagsMapForThisLevel = new Map([
-          [TOP_LEVEL_FLAGS, new Map(topLevelFlagsEntries)],
-          [INHERIT_FLAGS, new Map(inheritFlagsEntries)],
-        ]);
-        ptr.set(SPECIAL_FLAGS_KEY, flagsMapForThisLevel);
-        FLAGS_TO_MAP.set(flags, ptr);
-      }
-    }
+    initFlagsMapForRouteHierarchy(this.ROUTE_FLAGS_MAP, getFlagsFromName, toList);
     // update flags for routes that are below pivot
     const fromList = createList(from);
     const { pivot } = diffRoutes({ fromList, toList });
     for (let i = pivot; i < toList.length; i++) {
-      const { flags } = privateRouter.getRoute(toList[i].name);
+      const flags = getFlagsFromName(toList[i].name);
       if (!flags) continue;
       const ptr = FLAGS_TO_MAP.get(flags);
-      for (const v of ptr
-        .get(SPECIAL_FLAGS_KEY)
-        .get(TOP_LEVEL_FLAGS)
-        .values()) {
+      for (const v of ptr.get(FLAGS).get(TOP_LEVEL_FLAGS).values()) {
         v.update();
       }
     }
   },
 });
 
-function diffRoutes({ fromList, toList }) {
-  for (let i = 0; i < toList.length; i++) {
-    const toSegment = toList[i];
-    const fromSegment = fromList[i];
-    if (!toSegment || !fromSegment) {
-      return { pivot: i };
+function initFlagsMapForRouteHierarchy(routeFlagsMap, getFlagsFromName, toList) {
+  // init flags map for each route hierarchy
+  let ptr = routeFlagsMap;
+  for (const { name, localName } of toList) {
+    if (!ptr.has(localName)) {
+      ptr.set(localName, new Map([[PARENT, ptr]]));
     }
-    const { name: toName, params: toParams } = toList[i];
-    const { name: fromName, params: fromParams } = fromList[i];
-    if (toName !== fromName || !objectsMatch(toParams, fromParams)) return { pivot: i };
-  }
-  return { pivot: toList.length };
-}
-
-function objectsMatch(obj1, obj2) {
-  if (obj1 === undefined && obj2 === undefined) {
-    return true;
-  }
-
-  if (
-    (obj1 !== undefined && obj2 === undefined) ||
-    (obj1 === undefined && obj2 !== undefined)
-  ) {
-    return false;
-  }
-
-  let fromKeys = Object.keys(obj1);
-  let toKeys = Object.keys(obj2);
-
-  if (fromKeys.length === toKeys.length) {
-    for (let i = 0; i < fromKeys.length; i++) {
-      let fromKey = fromKeys[i];
-      if (toKeys.indexOf(fromKey) === -1) {
-        return false;
-      }
-
-      if (obj1[fromKey] !== obj2[fromKey]) {
-        return false;
-      }
+    ptr = ptr.get(localName);
+    // TODO: figure out if we can use buildRouteInfoMetadata
+    const flags = getFlagsFromName(name);
+    // flags.keys: ['a', 'b']
+    if (flags && !ptr.has(FLAGS)) {
+      const parentFlagsMap = ptr.get(PARENT).get(FLAGS);
+      const topLevelFlagsEntries = flags.keys
+        .filter(
+          (f) =>
+            !parentFlagsMap.get(TOP_LEVEL_FLAGS).has(f) &&
+            !parentFlagsMap.get(INHERIT_FLAGS).has(f)
+        )
+        .map((f) => [f, new FlagRef(f)]);
+      const inheritFlagsEntries = Array.from(
+        parentFlagsMap.get(INHERIT_FLAGS).entries()
+      ).concat(Array.from(parentFlagsMap.get(TOP_LEVEL_FLAGS).entries()));
+      const flagsMapForThisLevel = new Map([
+        [TOP_LEVEL_FLAGS, new Map(topLevelFlagsEntries)],
+        [INHERIT_FLAGS, new Map(inheritFlagsEntries)],
+      ]);
+      ptr.set(FLAGS, flagsMapForThisLevel);
+      FLAGS_TO_MAP.set(flags, ptr);
     }
-
-    return true;
   }
-
-  return false;
 }
 
 class FlagRef {
@@ -123,7 +87,7 @@ class FlagRef {
   }
 }
 
-export const STORE = new Map(
+const STORE = new Map(
   Object.entries(
     JSON.parse(
       decodeURI(document.querySelector('meta[name=feature-flags]').content)
@@ -131,28 +95,21 @@ export const STORE = new Map(
   )
 );
 
+export function getFlag(key) {
+  return STORE.get(key);
+}
+
 export function updateFlag(key) {
   const newValue = STORE.get(key) + 1;
   STORE.set(key, newValue);
 }
 
-const SPECIAL_PARENT_KEY = '.parent';
-const SPECIAL_FLAGS_KEY = '.flags';
+const PARENT = '.parent';
+const FLAGS = '.flags';
 const TOP_LEVEL_FLAGS = '.TOP_LEVEL_FLAGS';
 const INHERIT_FLAGS = '.INHERIT_FLAGS';
 
-// TODO: maybe a better abstraction
-// mem leak?
-const ROUTE_FLAGS_MAP = new Map([
-  [
-    SPECIAL_FLAGS_KEY,
-    new Map([
-      [TOP_LEVEL_FLAGS, new Map()],
-      [INHERIT_FLAGS, new Map()],
-    ]),
-  ],
-]);
-const FLAGS_TO_MAP = new Map();
+const FLAGS_TO_MAP = new WeakMap();
 
 // TODO: make evaluation tracked?
 export class FeatureFlags {
@@ -165,7 +122,7 @@ export class FeatureFlags {
       this.keys.includes(key)
     );
     notifyEvaluation(key);
-    const flagsMap = FLAGS_TO_MAP.get(this).get(SPECIAL_FLAGS_KEY);
+    const flagsMap = FLAGS_TO_MAP.get(this).get(FLAGS);
     return flagsMap.get(TOP_LEVEL_FLAGS).has(key)
       ? flagsMap.get(TOP_LEVEL_FLAGS).get(key).value
       : flagsMap.get(INHERIT_FLAGS).get(key).value;
@@ -173,7 +130,6 @@ export class FeatureFlags {
 }
 
 // Utils
-
 function notifyEvaluation(key) {
   // sendBeacon('/feature-falg-analytics')
   console.log(`${key} evaled`);
@@ -184,10 +140,51 @@ function createList(routeInfo) {
   if (routeInfo === null) {
     return ret;
   }
-
   routeInfo.find((item) => {
     ret.push(item);
     return false;
   });
   return ret;
+}
+
+function diffRoutes({ fromList, toList }) {
+  for (let i = 0; i < toList.length; i++) {
+    const toSegment = toList[i];
+    const fromSegment = fromList[i];
+    if (!toSegment || !fromSegment) {
+      return { pivot: i };
+    }
+    const { name: toName, params: toParams } = toList[i];
+    const { name: fromName, params: fromParams } = fromList[i];
+    if (toName !== fromName || !objectsMatch(toParams, fromParams))
+      return { pivot: i };
+  }
+  return { pivot: toList.length };
+}
+
+function objectsMatch(obj1, obj2) {
+  if (obj1 === undefined && obj2 === undefined) {
+    return true;
+  }
+  if (
+    (obj1 !== undefined && obj2 === undefined) ||
+    (obj1 === undefined && obj2 !== undefined)
+  ) {
+    return false;
+  }
+  let fromKeys = Object.keys(obj1);
+  let toKeys = Object.keys(obj2);
+  if (fromKeys.length === toKeys.length) {
+    for (let i = 0; i < fromKeys.length; i++) {
+      let fromKey = fromKeys[i];
+      if (toKeys.indexOf(fromKey) === -1) {
+        return false;
+      }
+      if (obj1[fromKey] !== obj2[fromKey]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
 }
