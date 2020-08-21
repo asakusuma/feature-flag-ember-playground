@@ -1,10 +1,15 @@
 <h1>Feature Flag Test App</h1>
+<AllFlags/>
 
-<ul>
-  <li><LinkTo @route="profile" @model=1>Profile 1</LinkTo></li>
-  <li><LinkTo @route="profile.connections" @model=1>Profile 1 Connections</LinkTo></li>
-  <li><LinkTo @route="profile" @model=2>Profile 2</LinkTo></li>
-  <li><LinkTo @route="profile.connections" @model=2>Profile 2 Connections</LinkTo></li>
-</ul>
+<section>
+  <ul>
+    <li><LinkTo @route="profile" @model="1">Profile 1</LinkTo></li>
+    <li><LinkTo @route="profile.connections" @model="1">Profile 1 Connections</LinkTo></li>
+    <li><LinkTo @route="profile" @model="2">Profile 2</LinkTo></li>
+    <li><LinkTo @route="profile.connections" @model="2">Profile 2 Connections</LinkTo></li>
+  </ul>
+</section>
 
-{{outlet}}
+<main>
+  {{outlet}}
+</main>
