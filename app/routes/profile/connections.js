@@ -1,15 +1,14 @@
 import Route from '@ember/routing/route';
-import flagDecorator from './../../decorators/flag';
+import { routeDecorator } from './../../decorators/flags';
 
 // TODO figure out ES6 syntax
 export default Route.extend({
-  flag: flagDecorator(['a', 'b']),
+  flags: routeDecorator(['a', 'b']),
   model() {
-    console.log('model connections');
-    const b_flag = this.flag.getFlag('b');
+    console.log('model() profile.connections');
     return {
-      a_flag: this.flag.getFlag('a'),
-      b_flag
+      a_flag: this.flags.getEvaluation('a'),
+      b_flag: this.flags.getEvaluation('b')
     };
   }
 });
