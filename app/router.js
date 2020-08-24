@@ -10,4 +10,5 @@ Router.map(function() {
   this.route('profile', { path: '/profile/:profile_id' }, function () {
     this.route('connections');
   });
+  this.route('rewrite');
 });
