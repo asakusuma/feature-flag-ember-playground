@@ -1,7 +1,6 @@
 import Route from '@ember/routing/route';
 
-function generateRouteHandler(owner, key, controlRouteName, treatmentRouteName) {
-  const controlRoute = owner.lookup(`route:${controlRouteName}`);
+function generateRouteHandler(owner, key, treatmentRouteName) {
   const treatmentRoute = owner.lookup(`route:${treatmentRouteName}`);
   const flagService = owner.lookup('service:flags');
   return {
@@ -9,21 +8,24 @@ function generateRouteHandler(owner, key, controlRouteName, treatmentRouteName) 
       const rawFlag = flagService.getFlag(key);
       const flagIsControl = !rawFlag || rawFlag === 'control';
       if (prop === 'templateName') {
-        return flagIsControl ? controlRouteName : treatmentRouteName;
+        return flagIsControl ? Reflect.get(target, prop) : treatmentRouteName;
       } else if (prop === 'controller') {
         return Reflect.get(target, prop);
       }
-      return Reflect.get(flagIsControl ? controlRoute : treatmentRoute, prop);
+      return Reflect.get(flagIsControl ? target : treatmentRoute, prop);
     },
   };
 }
 
-export function setupFlaggedRoute({flagKey, controlRouteName, treatmentRouteName}) {
-  return class FlagRoute extends Route {
+export function setupFlaggedRoute(ControlRouteClass, { flagKey, enabledRouteName }) {
+  if (navigator.userAgent.indexOf('MSIE') > -1) {
+    return ControlRouteClass;
+  }
+  return class FlagRoute extends ControlRouteClass {
     constructor(owner) {
       return new Proxy(
         super(...arguments),
-        generateRouteHandler(owner, flagKey, controlRouteName, treatmentRouteName)
+        generateRouteHandler(owner, flagKey, enabledRouteName)
       );
     }
   }

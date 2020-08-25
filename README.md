@@ -10,18 +10,18 @@ When re-writing an entire page, we may want to use a feature flag to guard a sep
 
 This function returns a "proxy" Route class that will proxy to the right route depending on the given feature flag value.
 
-The function takes a single argument with three properties:
+The function takes two arguments, the default "control" route class, and then an object with two properties: `flagKey` and `enabledRouteName`. If the flag is off, or if the browser is Internet Explorer, the control class is used. Otherwise, if the flag is on, the enabled route is used.
 
 ```JavaScript
-export default setupFlaggedRoute({
+class ControlClass extends Route {}
+
+export default setupFlaggedRoute(ControlClass, {
   flagKey: 'my.flag.name',
-  controlRouteName: 'myfeature/control-route',
-  treatmentRouteName: 'myfeature/treatment-route'
+  enabledRouteName: 'myfeature/new-route'
 });
 ```
 
-The given invocation assumes that `app/routes/myfeature/control-route.js`, `app/routes/myfeature/treatment-route.js`, `app/templates/myfeature/control-route.hbs`, and `app/templates/myfeature/treatment-route.hbs` all exist.
+The given invocation assumes that `app/routes/myfeature/new-route.js` and `app/templates/myfeature/new-route.hbs` both exist.
 
 ### TODOO
   * Figure out how controllers will work
-  * Figure out if this API will allow falling back to control in IE

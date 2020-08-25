@@ -1,7 +1,7 @@
 import { setupFlaggedRoute } from './../../lib/flag-route';
+import OriginalRoute from './old-education';
 
-export default setupFlaggedRoute({
+export default setupFlaggedRoute(OriginalRoute, {
   flagKey: 'education',
-  controlRouteName: 'profile/old-education',
-  treatmentRouteName: 'profile/new-education'
+  enabledRouteName: 'profile/new-education'
 });
