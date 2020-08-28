@@ -1,3 +1,9 @@
 <h2>New Education Page</h2>
 
 {{model.name}}
+
+{{#if this.newToggle}}
+  <button type="button" {{on "click" this.newEducationToggle}}>New toggle off</button>
+{{else}}
+  <button type="button" {{on "click" this.newEducationToggle}}>New toggle on</button>
+{{/if}}
