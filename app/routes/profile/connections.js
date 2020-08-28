@@ -5,7 +5,6 @@ import { routeDecorator } from './../../decorators/flags';
 export default Route.extend({
   flags: routeDecorator(['a', 'b']),
   model() {
-    console.log('model() profile.connections');
     return {
       a_flag: this.flags.getEvaluation('a'),
       b_flag: this.flags.getEvaluation('b')
