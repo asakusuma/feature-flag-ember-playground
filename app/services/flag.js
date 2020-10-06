@@ -1,5 +1,4 @@
 import Service, { inject as service } from '@ember/service';
-import { assert } from '@ember/debug';
 
 export default Service.extend({
   router: service('router'),
@@ -18,6 +17,11 @@ export default Service.extend({
         ]),
       ],
     ]);
+  },
+  snapshotFromRouteName(routeName) {
+    console.log(`snapshotFromRouteName: ${routeName}`);
+    const privateRouter = this.router._router._routerMicrolib;
+    return privateRouter.getRoute(routeName).flags._snapshotSync();
   },
   _processFlagsStuffForRouteInfos({ from, to }) {
     const getFlagsFromName = (routeName) => {
@@ -124,7 +128,7 @@ export class FlagEvaluator {
   constructor(keys) {
     this.keys = keys;
   }
-  snapshot() {
+  _snapshotSync() {
     const flagsMap = FLAGS_TO_MAP.get(this).get(FLAGS);
     const snapshot = Object.create(null);
     for (let key of this.keys) {
@@ -132,7 +136,10 @@ export class FlagEvaluator {
         ? flagsMap.get(TOP_LEVEL_FLAGS).get(key).value
         : flagsMap.get(INHERIT_FLAGS).get(key).value;
     }
-    return Promise.resolve(snapshot);
+    return snapshot;
+  }
+  snapshot() {
+    return Promise.resolve(this._snapshotSync());
   }
 }
 
