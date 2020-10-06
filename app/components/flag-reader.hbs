@@ -1,0 +1,8 @@
+<h3>Flag Reader Component</h3>
+
+<ul>
+  {{! -get-dynamic-var should be appended at build time}}
+  {{#each-in (get-flag-evaluator (get (-get-dynamic-var "outletState") "render.name")) as |key value|}}
+    <li>{{key}}: {{value}}</li>
+  {{/each-in}}
+</ul>

@@ -1,5 +1,4 @@
 import Service, { inject as service } from '@ember/service';
-import { assert } from '@ember/debug';
 
 export default Service.extend({
   router: service('router'),
@@ -19,6 +18,12 @@ export default Service.extend({
       ],
     ]);
   },
+  snapshotFromRouteName(routeName) {
+    const privateRouter = this.router._router._routerMicrolib;
+    const snapshot = privateRouter.getRoute(routeName).flags._snapshotSync();
+    console.log(`snapshotFromRouteName "${routeName}"`);
+    return snapshot;
+  },
   _processFlagsStuffForRouteInfos({ from, to }) {
     const getFlagsFromName = (routeName) => {
       const privateRouter = this.router._router._routerMicrolib;
@@ -26,7 +31,11 @@ export default Service.extend({
     };
     // application -> profile -> connections
     const toList = createList(to);
-    initFlagsMapForRouteHierarchy(this.ROUTE_FLAGS_MAP, getFlagsFromName, toList);
+    initFlagsMapForRouteHierarchy(
+      this.ROUTE_FLAGS_MAP,
+      getFlagsFromName,
+      toList
+    );
     // update flags for routes that are below pivot
     const fromList = createList(from);
     const { pivot } = diffRoutes({ fromList, toList });
@@ -41,7 +50,11 @@ export default Service.extend({
   },
 });
 
-function initFlagsMapForRouteHierarchy(routeFlagsMap, getFlagsFromName, toList) {
+function initFlagsMapForRouteHierarchy(
+  routeFlagsMap,
+  getFlagsFromName,
+  toList
+) {
   // init flags map for each route hierarchy
   let ptr = routeFlagsMap;
   for (const { name, localName } of toList) {
@@ -112,29 +125,37 @@ const INHERIT_FLAGS = '.INHERIT_FLAGS';
 const FLAGS_TO_MAP = new WeakMap();
 
 // TODO: make evaluation tracked?
-export class FeatureFlags {
+export class FlagEvaluator {
   constructor(keys) {
     this.keys = keys;
   }
-  getEvaluation(key) {
-    assert(
-      `Accessing a ${key} that is not declared. (declared: ${this.keys})`,
-      this.keys.includes(key)
-    );
-    notifyEvaluation(key);
+  _snapshotSync() {
     const flagsMap = FLAGS_TO_MAP.get(this).get(FLAGS);
-    return flagsMap.get(TOP_LEVEL_FLAGS).has(key)
-      ? flagsMap.get(TOP_LEVEL_FLAGS).get(key).value
-      : flagsMap.get(INHERIT_FLAGS).get(key).value;
+    const snapshot = Object.create(null);
+    for (let key of this.keys) {
+      const value = flagsMap.get(TOP_LEVEL_FLAGS).has(key)
+        ? flagsMap.get(TOP_LEVEL_FLAGS).get(key).value
+        : flagsMap.get(INHERIT_FLAGS).get(key).value;
+      Object.defineProperty(snapshot, key, {
+        get() {
+          notifyEvaluation({ key, value });
+          return value;
+        },
+        enumerable: true,
+      });
+    }
+    return snapshot;
+  }
+  snapshot() {
+    return Promise.resolve(this._snapshotSync());
   }
 }
 
 // Utils
-function notifyEvaluation(key) {
+function notifyEvaluation({ key, value }) {
   // sendBeacon('/feature-falg-analytics')
-  console.log(`${key} evaled`);
+  console.log(`${key} evaled as ${value}`);
 }
-
 function createList(routeInfo) {
   const ret = [];
   if (routeInfo === null) {

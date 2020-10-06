@@ -1,5 +1,5 @@
 import Component from '@glimmer/component';
-import { getFlag, updateFlag } from '../services/flags';
+import { getFlag, updateFlag } from '../services/flag';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 

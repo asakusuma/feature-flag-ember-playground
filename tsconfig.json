@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "experimentalDecorators": true
+  },
+  "include": ["app/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

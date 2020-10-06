@@ -1,4 +1,5 @@
 <h3>Profile {{@model.profile_id}}</h3>
-<p>a: {{@model.a_flag}}</p>
+<p>a: {{evaluate-flag @model.flags "a"}}</p>
+<FlagReader />
 
 {{outlet}}
