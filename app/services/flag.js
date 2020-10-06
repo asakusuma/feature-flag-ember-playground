@@ -19,9 +19,10 @@ export default Service.extend({
     ]);
   },
   snapshotFromRouteName(routeName) {
-    console.log(`snapshotFromRouteName: ${routeName}`);
     const privateRouter = this.router._router._routerMicrolib;
-    return privateRouter.getRoute(routeName).flags._snapshotSync();
+    const snapshot = privateRouter.getRoute(routeName).flags._snapshotSync();
+    console.log(`snapshotFromRouteName "${routeName}": ${JSON.stringify(snapshot)}`);
+    return snapshot;
   },
   _processFlagsStuffForRouteInfos({ from, to }) {
     const getFlagsFromName = (routeName) => {
