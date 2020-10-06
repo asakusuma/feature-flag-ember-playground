@@ -21,7 +21,7 @@ export default Service.extend({
   snapshotFromRouteName(routeName) {
     const privateRouter = this.router._router._routerMicrolib;
     const snapshot = privateRouter.getRoute(routeName).flags._snapshotSync();
-    console.log(`snapshotFromRouteName "${routeName}": ${JSON.stringify(snapshot)}`);
+    console.log(`snapshotFromRouteName "${routeName}"`);
     return snapshot;
   },
   _processFlagsStuffForRouteInfos({ from, to }) {
@@ -133,9 +133,16 @@ export class FlagEvaluator {
     const flagsMap = FLAGS_TO_MAP.get(this).get(FLAGS);
     const snapshot = Object.create(null);
     for (let key of this.keys) {
-      snapshot[key] = flagsMap.get(TOP_LEVEL_FLAGS).has(key)
+      const value = flagsMap.get(TOP_LEVEL_FLAGS).has(key)
         ? flagsMap.get(TOP_LEVEL_FLAGS).get(key).value
         : flagsMap.get(INHERIT_FLAGS).get(key).value;
+      Object.defineProperty(snapshot, key, {
+        get() {
+          notifyEvaluation({ key, value });
+          return value;
+        },
+        enumerable: true,
+      });
     }
     return snapshot;
   }
@@ -145,6 +152,10 @@ export class FlagEvaluator {
 }
 
 // Utils
+function notifyEvaluation({ key, value }) {
+  // sendBeacon('/feature-falg-analytics')
+  console.log(`${key} evaled as ${value}`);
+}
 function createList(routeInfo) {
   const ret = [];
   if (routeInfo === null) {
